@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import jwt, { VerifyErrors } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import prisma from '../config/prisma';
 import { logActivity } from '../utils/activityLogger';
 import { ActionType, EntityType } from '../types/enums'; 
@@ -39,9 +39,9 @@ const clearRefreshTokens = async (userId: string) => {
 // Set refresh token as an HTTP-only cookie
 const setRefreshTokenCookie = (res: Response, refreshToken: string) => {
   res.cookie('refreshToken', refreshToken, {
-    httpOnly: true, // Cookie is not accessible via JavaScript
+    httpOnly: true, 
     secure: process.env.NODE_ENV === 'production', // Send only over HTTPS in production
-    sameSite: 'strict', // Prevents CSRF attacks
+    sameSite: 'strict', 
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 };
