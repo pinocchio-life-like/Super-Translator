@@ -1,5 +1,3 @@
-// prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -17,7 +15,7 @@ model User {
   name        String
   googleId    String?      @unique               // To store Google OAuth ID
   role        RoleEnum     @default(USER)
-  refreshToken String?     // For JWT token refresh, optional
+  // refreshToken String?     // For JWT token refresh, optional
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -133,6 +131,7 @@ enum EntityType {
   TRANSLATION_JOB
   FILE
   ACTIVITY_LOG
+  REFRESH_TOKEN
   OTHER
 }
 

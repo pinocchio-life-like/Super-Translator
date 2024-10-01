@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt, { VerifyErrors } from 'jsonwebtoken';
 import prisma from '../config/prisma';
+import { logActivity } from '../utils/activityLogger';
+import { ActionType, EntityType } from '../types/enums'; 
 
 const generateAccessToken = (userId: string) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET || 'default_secret', {
@@ -11,7 +13,7 @@ const generateAccessToken = (userId: string) => {
 
 const generateRefreshToken = (userId: string) => {
   return jwt.sign({ id: userId }, process.env.JWT_REFRESH_SECRET || 'default_refresh_secret', {
-    expiresIn: '7d', // Refresh token lives longer, e.g., 7 days
+    expiresIn: '7d', 
   });
 };
 
@@ -31,6 +33,16 @@ const clearRefreshTokens = async (userId: string) => {
     where: {
       userId,
     },
+  });
+};
+
+// Set refresh token as an HTTP-only cookie
+const setRefreshTokenCookie = (res: Response, refreshToken: string) => {
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true, // Cookie is not accessible via JavaScript
+    secure: process.env.NODE_ENV === 'production', // Send only over HTTPS in production
+    sameSite: 'strict', // Prevents CSRF attacks
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 };
 
@@ -61,7 +73,13 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
     await clearRefreshTokens(newUser.id);
     await saveRefreshToken(newUser.id, refreshToken);
 
-    res.status(201).json({ message: 'User created', accessToken, refreshToken });
+    // Set refresh token in an HTTP-only cookie
+    setRefreshTokenCookie(res, refreshToken);
+
+    // Log successful signup activity
+    await logActivity(req, newUser.id, ActionType.CREATE, EntityType.USER, newUser.id);
+
+    res.status(201).json({ message: 'User created', accessToken });
   } catch (error) {
     console.error('Error creating user', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -74,9 +92,9 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
   try {
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      res.status(400).json({ message: 'Invalid email or password' });
-      return;
+    if (!user || !user.password) {
+        res.status(400).json({ message: 'Invalid email or password' });
+        return;
     }
 
     const validPassword = await bcrypt.compare(password, user.password);
@@ -92,38 +110,15 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     await clearRefreshTokens(user.id);
     await saveRefreshToken(user.id, refreshToken);
 
-    res.status(200).json({ message: 'Login successful', accessToken, refreshToken });
+    // Set refresh token in an HTTP-only cookie
+    setRefreshTokenCookie(res, refreshToken);
+
+    // Log successful login activity
+    await logActivity(req, user.id, ActionType.LOGIN, EntityType.USER, user.id);
+
+    res.status(200).json({ message: 'Login successful', accessToken });
   } catch (error) {
     console.error('Error logging in', error);
     res.status(500).json({ error: 'Internal server error' });
   }
-};
-
-// Refresh token controller
-export const refreshToken = async (req: Request, res: Response) => {
-    const { token } = req.body;
-  
-    if (!token) {
-      return res.status(401).json({ message: 'No token provided' });
-    }
-  
-    try {
-      const storedToken = await prisma.refreshToken.findUnique({ where: { token } });
-  
-      if (!storedToken) {
-        return res.status(403).json({ message: 'Invalid refresh token' });
-      }
-  
-      jwt.verify(token, process.env.JWT_REFRESH_SECRET || 'default_refresh_secret', (err: VerifyErrors | null, decoded: any) => {
-        if (err) {
-          return res.status(403).json({ message: 'Invalid or expired refresh token' });
-        }
-  
-        const accessToken = generateAccessToken(decoded.id);
-        res.status(200).json({ accessToken });
-      });
-    } catch (error) {
-      console.error('Error refreshing token', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
 };

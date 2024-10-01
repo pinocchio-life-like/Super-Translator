@@ -18,7 +18,7 @@ app.get('/health', (req, res) => {
   res.status(200).json({ message: 'API is healthy' });
 });
 
-// Example routes
+// User routes
 app.use('/api/users', userRoutes);
 
 // Gracefully disconnect Prisma when the app is terminated
