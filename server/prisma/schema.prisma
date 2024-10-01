@@ -1,0 +1,148 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// === User Model ===
+model User {
+  id          String       @id @default(uuid())  // Use UUID instead of autoincrement
+  email       String?      @unique
+  password    String?
+  name        String
+  googleId    String?      @unique               // To store Google OAuth ID
+  role        RoleEnum     @default(USER)
+  refreshToken String?     // For JWT token refresh, optional
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relationships
+  translationJobs TranslationJob[]   // A user can have many translation jobs
+  files           File[]             // A user can upload many files
+  activityLogs    ActivityLog[]      // Track user activities
+  roles           UserRole[]         // Many-to-many relation with roles
+  refreshTokens   RefreshToken[]     // Optional, for JWT token management
+}
+
+// === Translation Job Model ===
+model TranslationJob {
+  id           String    @id @default(uuid())    // Use UUID instead of autoincrement
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  sourceFile   String    // URL or path to the uploaded file
+  outputFile   String?   // URL or path to the translated file
+  sourceLang   String    // e.g., 'en'
+  targetLangs  String[]  // List of target languages (e.g., ['es', 'fr', 'de'])
+  status       JobStatus @default(PENDING)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @default(now())
+}
+
+// === File Model (Optional) ===
+model File {
+  id         String    @id @default(uuid())     // Use UUID instead of autoincrement
+  fileName   String    // Name of the uploaded file
+  fileType   String    // e.g., 'text/plain', 'application/pdf', etc.
+  filePath   String    // Path to the file (local or S3)
+  createdAt  DateTime  @default(now())
+  owner      User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId    String
+}
+
+// === Activity Log Model (Robust) ===
+model ActivityLog {
+  id         String    @id @default(uuid())     // Use UUID instead of autoincrement
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  
+  action     ActionType   // Type of action performed (e.g., CREATE, DELETE, LOGIN)
+  entity     EntityType   // The entity/resource type affected by the action (e.g., TranslationJob, File)
+  entityId   String?      // ID of the entity affected (nullable for non-entity actions like login)
+  
+  metadata   Json?        // Additional data (e.g., fields updated, files uploaded)
+  ipAddress  String?      // IP address of the user performing the action
+  userAgent  String?      // Client info (e.g., browser, device)
+  outcome    ActionOutcome @default(SUCCESS)    // Was the action successful?
+  
+  createdAt  DateTime @default(now())   // Timestamp when the action occurred
+}
+
+// === Role-Based Access Control (Optional) ===
+model Role {
+  id          String       @id @default(uuid())    // Use UUID instead of autoincrement
+  name        String        @unique
+  permissions Permission[]  @relation("RolePermissions")  // A role can have many permissions
+  users       UserRole[]    // Users can be assigned multiple roles
+}
+
+model Permission {
+  id     String   @id @default(uuid())    // Use UUID instead of autoincrement
+  name   String   @unique
+
+  // Relation back to Role
+  roles  Role[]   @relation("RolePermissions") // A permission can belong to multiple roles
+}
+
+// Junction table for many-to-many relation between users and roles
+model UserRole {
+  userId String
+  roleId String
+
+  // Foreign keys
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])  // Composite key
+}
+
+// === Refresh Token Model (Optional) ===
+model RefreshToken {
+  id        String   @id @default(uuid())   // Use UUID instead of autoincrement
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  token     String
+  createdAt DateTime @default(now())
+  expired   Boolean  @default(false)
+}
+
+// === Enums ===
+enum RoleEnum {
+  USER
+  ADMIN
+}
+
+enum JobStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum ActionOutcome {
+  SUCCESS
+  FAILED
+}
+
+enum EntityType {
+  USER
+  TRANSLATION_JOB
+  FILE
+  ACTIVITY_LOG
+  OTHER
+}
+
+enum ActionType {
+  LOGIN
+  LOGOUT
+  CREATE
+  UPDATE
+  DELETE
+  UPLOAD
+  DOWNLOAD
+  TRANSLATE
+}
