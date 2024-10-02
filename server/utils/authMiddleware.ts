@@ -4,7 +4,7 @@ import prisma from '../config/prisma';
 
 const generateAccessToken = (userId: string) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET || 'default_secret', {
-    expiresIn: '1h',
+    expiresIn: '10s',
   });
 };
 
