@@ -2,7 +2,6 @@
 import React, { useEffect } from 'react';
 import { useAuth, AuthProvider } from '../../app/context/AuthContext'; // Ensure you use AuthProvider
 import { useRouter } from 'next/router';
-import Layout from '../../app/layout'; 
 import LoginForm from '../../app/components/LoginForm'; // Assume you have this component
 
 const LoginPage: React.FC = () => {
@@ -11,14 +10,12 @@ const LoginPage: React.FC = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/protected/dashboard'); // Redirect if already logged in
+      router.push('/'); // Redirect if already logged in
     }
   }, [isAuthenticated, router]);
 
   return (
-    <Layout>
-      {!isAuthenticated ? <LoginForm /> : <p>Redirecting to dashboard...</p>}
-    </Layout>
+    <>{!isAuthenticated ? <LoginForm /> : <p>Redirecting to dashboard...</p>}</> 
   );
 };
 
