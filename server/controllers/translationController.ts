@@ -1,9 +1,6 @@
 import { Request, Response } from 'express';
 import OpenAI from 'openai';
 import Instructor from '@instructor-ai/instructor';
-import dotenv from 'dotenv';
-
-dotenv.config(); // To load environment variables
 
 // Initialize the OpenAI client with the API key from .env
 const openai = new OpenAI({
