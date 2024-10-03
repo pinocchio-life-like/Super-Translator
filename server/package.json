@@ -27,6 +27,7 @@
     "typescript": "^5.6.2"
   },
   "dependencies": {
+    "@instructor-ai/instructor": "^1.5.0",
     "@prisma/client": "^5.20.0",
     "@vercel/postgres": "^0.10.0",
     "bcryptjs": "^2.4.3",
@@ -36,6 +37,7 @@
     "express": "^4.21.0",
     "google-auth-library": "^9.14.1",
     "jsonwebtoken": "^9.0.2",
+    "openai": "^4.67.1",
     "pg": "^8.13.0",
     "uuid": "^10.0.0"
   }

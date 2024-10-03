@@ -4,7 +4,8 @@ import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import userRoutes from './routes/userRoutes'; 
-import prisma from './config/prisma'; // Prisma client
+import translationRoutes from './routes/translationRoutes'; 
+import prisma from './config/prisma'; 
 import { authenticateToken } from './utils/authMiddleware';
 
 dotenv.config();
@@ -28,6 +29,9 @@ app.get('/health', (req, res) => {
 
 // User routes
 app.use('/api/users', userRoutes);
+
+// Translation routes
+app.use('/api/translate',authenticateToken, translationRoutes);
 
 app.get('/protected', authenticateToken, (req, res) => {
   res.json({ message: 'This is a protected route' });
