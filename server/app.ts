@@ -15,7 +15,8 @@ const app = express();
 // Middleware setup
 app.use(
   cors({
-    origin: 'https://super-translator-demo.vercel.app', 
+    origin: ['https://super-translator-demo.vercel.app', 'http://localhost:3000'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true,
   })
 );
