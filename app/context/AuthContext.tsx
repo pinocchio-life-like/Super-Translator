@@ -1,4 +1,5 @@
-// app/context/AuthContext.tsx
+"use client";
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from '../utils/axios';
 import { useRouter } from 'next/router';
