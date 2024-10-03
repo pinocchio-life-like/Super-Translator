@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const axiosInstance = axios.create({
-  baseURL: 'https://super-translator-api.vercel.app', 
+  baseURL: 'https://super-translator.onrender.com', 
   withCredentials: true, // Ensure cookies (including refreshToken) are sent with requests
 });
 
