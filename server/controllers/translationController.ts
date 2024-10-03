@@ -10,7 +10,7 @@ const openai = new OpenAI({
 // Wrap the OpenAI client with Instructor-AI
 const instructorClient = Instructor({
   client: openai,
-  mode: 'FUNCTIONS', // Using functions mode as specified
+  mode: 'TOOLS', 
 });
 
 export const translation = async (req: Request, res: Response): Promise<void> => {
