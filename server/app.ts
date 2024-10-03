@@ -37,7 +37,8 @@ app.get('/', (req, res) => {
 app.use('/api/users', userRoutes);
 
 // Translation routes
-app.use('/api/translate',authenticateToken, translationRoutes);
+// app.use('/api/translate',authenticateToken, translationRoutes);
+app.use('/api/translate', translationRoutes);
 
 app.get('/protected', authenticateToken, (req, res) => {
   res.json({ message: 'This is a protected route' });
