@@ -1,8 +1,7 @@
-// utils/axios.ts
 import axios from 'axios';
 
 const axiosInstance = axios.create({
-  baseURL: 'http://localhost:5000', // Your backend API base URL
+  baseURL: 'https://super-translator-api.vercel.app', 
   withCredentials: true, // Ensure cookies (including refreshToken) are sent with requests
 });
 

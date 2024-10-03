@@ -14,6 +14,7 @@ const LoginForm: React.FC = () => {
     try {
       await login(email, password);
     } catch (err) {
+      console.error(err);
       setError('Login failed. Please check your credentials.');
     }
   };
