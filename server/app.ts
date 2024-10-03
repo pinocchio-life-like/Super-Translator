@@ -29,6 +29,10 @@ app.get('/health', (req, res) => {
   res.status(200).json({ message: 'API is healthy' });
 });
 
+app.get('/', (req, res) => {
+  res.status(200).json({ message: 'Welcome to the Super Translator API' });
+})
+
 // User routes
 app.use('/api/users', userRoutes);
 
