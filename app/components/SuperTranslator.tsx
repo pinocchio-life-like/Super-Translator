@@ -1,6 +1,6 @@
 import { FaPaperclip } from 'react-icons/fa';
 import { FaCircleArrowUp } from 'react-icons/fa6';
-import Layout from '../layout';
+// import Layout from '../layout';
 import { useEffect, useRef, useState } from 'react';
 
 interface Message {
