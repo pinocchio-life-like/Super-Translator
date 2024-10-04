@@ -11,9 +11,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex flex-col min-h-screen">
       {/* Header */}
-      <header className="w-full bg-white text-black h-16 flex items-center justify-between px-6 shadow-sm">
+      <header className="w-full bg-white text-black h-16 flex items-center justify-between px-6 shadow-sm fixed top-0 left-0 right-0 z-10">
         <h1 className="text-xl font-semibold">Super Translator</h1>
         <div className="relative">
           <button
@@ -26,9 +26,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       </header>
 
       {/* Main content area */}
-      <div className="flex flex-1 min-h-calc-100vh-16">
+      <div className="flex flex-1 pt-16">
         {/* Sidebar */}
-        <aside className="w-64 bg-gray-100">
+        <aside className="w-64 bg-gray-100 fixed top-16 bottom-0 left-0 z-10 overflow-auto">
           <nav className="mt-4">
             <ul>
               <li className="px-6 py-2 hover:bg-gray-200">
@@ -38,12 +38,12 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               </li>
               <li className="px-6 py-2 hover:bg-gray-200">
                 <a href="#" className="flex items-center">
-                  <span className="ml-2">Chat 1</span>
+                  <span className="ml-2">Chat 2</span>
                 </a>
               </li>
               <li className="px-6 py-2 hover:bg-gray-200">
                 <a href="#" className="flex items-center">
-                  <span className="ml-2">Chat 1</span>
+                  <span className="ml-2">Chat 3</span>
                 </a>
               </li>
             </ul>
@@ -51,7 +51,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </aside>
 
         {/* Main content */}
-        <main className="flex-grow p-6">
+        <main className="flex-grow p-2 ml-64 overflow-auto">
           {children}
         </main>
       </div>
