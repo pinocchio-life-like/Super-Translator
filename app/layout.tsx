@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { useAuth } from './context/AuthContext';
+import React from "react";
+import { useAuth } from "./context/AuthContext";
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { logout } = useAuth();
@@ -51,9 +51,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </aside>
 
         {/* Main content */}
-        <main className="flex-grow p-2 ml-64 overflow-auto">
-          {children}
-        </main>
+        <main className="flex-grow p-2 ml-64 overflow-auto">{children}</main>
       </div>
     </div>
   );
