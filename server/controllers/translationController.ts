@@ -1,6 +1,11 @@
 import { Request, Response } from "express";
 import OpenAI from "openai";
 import Instructor from "@instructor-ai/instructor";
+import { logActivity } from "../utils/activityLogger";
+import { ActionType, EntityType, ActionOutcome } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 // Initialize the OpenAI client
 const openai = new OpenAI({
@@ -32,9 +37,10 @@ export const translation = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  try {
-    const { source, target, content, prompt } = req.body;
+  const userId = (req.user as any)?.id; // Assuming you have user ID in the request object
+  const { source, target, content, prompt } = req.body;
 
+  try {
     // Check if the OpenAI API key is available
     if (!process.env.OPENAI_API_KEY) {
       res
@@ -70,16 +76,51 @@ export const translation = async (
     res.setHeader("Cache-Control", "no-cache, no-transform");
     res.setHeader("Connection", "keep-alive");
 
+    let translatedContent = "";
+
     // Stream the response data to the client
     for await (const chunk of responseStream as AsyncIterable<ChatCompletionChunk>) {
       const content = chunk.choices?.[0]?.delta?.content || "";
+      translatedContent += content;
       res.write(content);
     }
 
     // End the response when the stream is finished
     res.end();
+
+    // Save the translation job to the database
+    await prisma.translationJob.create({
+      data: {
+        userId,
+        sourceFile: content, // Save the original content in sourceFile
+        outputFile: translatedContent, // Save the translated content in outputFile
+        sourceLang: source,
+        targetLangs: [target],
+        status: "COMPLETED",
+      },
+    });
+
+    // Log successful translation activity
+    await logActivity(
+      req,
+      userId,
+      ActionType.TRANSLATE,
+      EntityType.TRANSLATION_JOB,
+      undefined,
+      ActionOutcome.SUCCESS
+    );
   } catch (error) {
     console.error("Error in translation service:", error);
     res.status(500).json({ error: "An error occurred during translation." });
+
+    // Log failed translation activity
+    await logActivity(
+      req,
+      userId,
+      ActionType.TRANSLATE,
+      EntityType.TRANSLATION_JOB,
+      undefined,
+      ActionOutcome.FAILED
+    );
   }
 };

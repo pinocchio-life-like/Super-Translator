@@ -28,7 +28,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       {/* Main content area */}
       <div className="flex flex-1 pt-16">
         {/* Sidebar */}
-        <aside className="w-64 bg-gray-100 fixed top-16 bottom-0 left-0 z-10 overflow-auto">
+        <aside className="w-64 bg-[#F9F9F9] fixed top-16 bottom-0 left-0 z-10 overflow-auto">
           <nav className="mt-4">
             <ul>
               <li className="px-6 py-2 hover:bg-gray-200">

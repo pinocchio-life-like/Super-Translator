@@ -34,8 +34,6 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
     const accessToken = generateAccessToken(newUser.id);
     const refreshToken = generateRefreshToken(newUser.id);
 
-    // Clear any existing refresh tokens for this user and save the new one
-    await clearRefreshTokens(newUser.id);
     await saveRefreshToken(newUser.id, refreshToken);
 
     // Set refresh token in an HTTP-only cookie
@@ -77,8 +75,6 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const accessToken = generateAccessToken(user.id);
     const refreshToken = generateRefreshToken(user.id);
 
-    // Clear existing refresh tokens and save the new one
-    await clearRefreshTokens(user.id);
     await saveRefreshToken(user.id, refreshToken);
 
     // Set refresh token in an HTTP-only cookie
