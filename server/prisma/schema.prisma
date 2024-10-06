@@ -25,6 +25,7 @@ model User {
   activityLogs    ActivityLog[]      // Track user activities
   roles           UserRole[]         // Many-to-many relation with roles
   refreshTokens   RefreshToken[]     // Optional, for JWT token management
+  conversationHistories ConversationHistory[] // A user can have many conversation histories
 }
 
 // === Translation Job Model ===
@@ -39,6 +40,19 @@ model TranslationJob {
   status       JobStatus @default(PENDING)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @default(now())
+  conversationHistories ConversationHistory[] // A translation job can have many conversation histories
+}
+
+// === Conversation History Model ===
+model ConversationHistory {
+  id         String    @id @default(uuid())     // Use UUID instead of autoincrement
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  translationJob   TranslationJob   @relation(fields: [translationJobId], references: [id], onDelete: Cascade)
+  translationJobId String
+  messages   Json      // Store messages as JSON
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @default(now()) @updatedAt
 }
 
 // === File Model (Optional) ===

@@ -1,6 +1,6 @@
 import { GetServerSideProps } from "next";
 import { useRouter } from "next/router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
 import { useChatHistory } from "../../app/hooks/useChatHistory";
 import { useStreamingFetch } from "../../app/hooks/useStreamingFetch";
 import { FaCircleArrowUp } from "react-icons/fa6";

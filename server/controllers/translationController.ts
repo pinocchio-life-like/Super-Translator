@@ -38,7 +38,7 @@ export const translation = async (
   res: Response
 ): Promise<void> => {
   const userId = (req.user as any)?.id; // Assuming you have user ID in the request object
-  const { source, target, content, prompt } = req.body;
+  const { source, target, content, prompt, translationJobId } = req.body;
 
   try {
     // Check if the OpenAI API key is available
@@ -47,6 +47,25 @@ export const translation = async (
         .status(500)
         .json({ error: "OpenAI API Key is not set in the environment." });
       return;
+    }
+
+    let messages: { role: string; content: string }[] = [];
+
+    let conversationHistory;
+
+    if (translationJobId) {
+      // Fetch existing conversation history
+      conversationHistory = await prisma.conversationHistory.findFirst({
+        where: { translationJobId },
+      });
+
+      if (conversationHistory && Array.isArray(conversationHistory.messages)) {
+        // Add existing messages to the AI input
+        messages = conversationHistory.messages as {
+          role: string;
+          content: string;
+        }[];
+      }
     }
 
     // Build the system message
@@ -59,13 +78,13 @@ export const translation = async (
       systemMessage += ` Consider the following prompt or context: ${prompt}`;
     }
 
-    // Prepare the message array for the AI
-    const messages = [{ role: "system", content: systemMessage } as any];
+    // Add the new user prompt to the message array
+    messages.push({ role: "user", content: systemMessage });
 
     // Generate AI response using Instructor-AI with streaming
     const responseStream = await instructorClient.chat.completions.create({
       model: "gpt-3.5-turbo",
-      messages,
+      messages: messages as any, // Cast to any to bypass type checking
       temperature: 0.2,
       stream: true,
       seed: 1, // sample seed for reproducibility
@@ -77,28 +96,65 @@ export const translation = async (
     res.setHeader("Connection", "keep-alive");
 
     let translatedContent = "";
+    let aggregatedContent = "";
 
     // Stream the response data to the client
     for await (const chunk of responseStream as AsyncIterable<ChatCompletionChunk>) {
       const content = chunk.choices?.[0]?.delta?.content || "";
       translatedContent += content;
+      aggregatedContent += content;
       res.write(content);
     }
 
     // End the response when the stream is finished
     res.end();
 
-    // Save the translation job to the database
-    await prisma.translationJob.create({
-      data: {
-        userId,
-        sourceFile: content, // Save the original content in sourceFile
-        outputFile: translatedContent, // Save the translated content in outputFile
-        sourceLang: source,
-        targetLangs: [target],
-        status: "COMPLETED",
-      },
-    });
+    let translationJob;
+
+    if (translationJobId) {
+      // Update the existing translation job
+      translationJob = await prisma.translationJob.update({
+        where: { id: translationJobId },
+        data: {
+          outputFile: translatedContent, // Update the translated content in outputFile
+          status: "COMPLETED",
+        },
+      });
+
+      // Update the conversation history for the existing translation job
+      await prisma.conversationHistory.update({
+        where: { id: conversationHistory?.id },
+        data: {
+          messages: {
+            push: { role: "bot", content: aggregatedContent },
+          },
+        },
+      });
+    } else {
+      // Save the translation job to the database
+      translationJob = await prisma.translationJob.create({
+        data: {
+          userId,
+          sourceFile: content, // Save the original content in sourceFile
+          outputFile: translatedContent, // Save the translated content in outputFile
+          sourceLang: source,
+          targetLangs: [target],
+          status: "COMPLETED",
+        },
+      });
+
+      // Save the conversation history to the database
+      await prisma.conversationHistory.create({
+        data: {
+          userId,
+          messages: [
+            { role: "user", content: systemMessage },
+            { role: "bot", content: aggregatedContent },
+          ],
+          translationJobId: translationJob.id,
+        },
+      });
+    }
 
     // Log successful translation activity
     await logActivity(
