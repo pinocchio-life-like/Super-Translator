@@ -9,6 +9,11 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
+interface TranslationJob {
+  id: string;
+  title: string;
+}
+
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { logout } = useAuth();
   const { data } = useTranslationJobs();
@@ -34,7 +39,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <aside className="w-64 bg-[#F9F9F9] fixed top-16 bottom-0 left-0 z-10 overflow-auto">
           <nav className="mt-4">
             <ul>
-              {data.translationJobs.map((job: any) => (
+              {data.translationJobs.map((job: TranslationJob) => (
                 <li key={job.id} className="px-6 py-2 hover:bg-gray-200">
                   <Link
                     href={`/translations/${job.id}`}
