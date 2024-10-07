@@ -45,10 +45,8 @@ const SuperTranslator: React.FC<SuperTranslatorProps> = ({ id }) => {
           },
           body: JSON.stringify(formDataObj),
         },
-        (receivedText: string, chunkValue: string) => {
-          const contentToUpdate =
-            fileExtension === "json" ? chunkValue : receivedText;
-          updateLastBotMessage(contentToUpdate, fileExtension);
+        (chunkValue: string) => {
+          updateLastBotMessage(chunkValue, fileExtension);
         },
         // Handle the response headers to get the translationJobId
         async (response: Response) => {
@@ -85,10 +83,16 @@ const SuperTranslator: React.FC<SuperTranslatorProps> = ({ id }) => {
         const response = await axiosInstance.get(
           `/api/translate/translationHistory/${id}`
         );
-        const data = await response.data.translationHistory[0];
+        const data = response.data.translationHistory[0];
         // Update chat history with fetched data
-        // Assume data contains messages array
-        data.messages.forEach((message: any) => addMessage(message));
+        // Map roles appropriately
+        data.messages.forEach((message: any) => {
+          if (message.role === "system") return; // Skip system messages
+          addMessage({
+            role: message.role === "bot" ? "bot" : "user",
+            content: message.content,
+          });
+        });
       }
     };
 

@@ -4,7 +4,7 @@ export const useStreamingFetch = () => {
   const streamingFetch = async (
     url: string,
     options: RequestInit,
-    onMessage: (receivedText: string, chunkValue: string) => void,
+    onMessage: (chunkValue: string) => void,
     onResponse?: (response: Response) => Promise<ReadableStream<Uint8Array>>
   ) => {
     try {
@@ -25,7 +25,6 @@ export const useStreamingFetch = () => {
       }
 
       const decoder = new TextDecoder("utf-8");
-      let receivedText = "";
       let done = false;
 
       while (!done) {
@@ -36,8 +35,7 @@ export const useStreamingFetch = () => {
         }
         if (value) {
           const chunkValue = decoder.decode(value, { stream: true });
-          receivedText += chunkValue;
-          onMessage(receivedText, chunkValue);
+          onMessage(chunkValue);
         }
       }
     } catch (error) {
