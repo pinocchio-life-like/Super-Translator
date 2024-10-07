@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 
 interface Message {
-  type: "user" | "bot";
+  role: "user" | "bot";
   content: string;
 }
 
@@ -20,22 +20,36 @@ export const useChatHistory = () => {
     setChatHistory((prevChatHistory) => [...prevChatHistory, message]);
   };
 
-  const updateLastBotMessage = (content: string) => {
+  const updateLastBotMessage = (content: string, fileExtension?: string) => {
     setChatHistory((prevChatHistory) => {
-      if (prevChatHistory[prevChatHistory.length - 1]?.type === "bot") {
+      if (
+        prevChatHistory.length > 0 &&
+        prevChatHistory[prevChatHistory.length - 1].role === "bot"
+      ) {
         const updatedHistory = [...prevChatHistory];
-        updatedHistory[updatedHistory.length - 1].content = content;
+        if (fileExtension === "json") {
+          // For JSON files, replace the content
+          updatedHistory[updatedHistory.length - 1].content = content;
+        } else {
+          // For other files, append the content
+          updatedHistory[updatedHistory.length - 1].content += content;
+        }
         return updatedHistory;
       } else {
-        return [...prevChatHistory, { type: "bot", content }];
+        return [...prevChatHistory, { role: "bot", content }];
       }
     });
+  };
+
+  const clearChatHistory = () => {
+    setChatHistory([]);
   };
 
   return {
     chatHistory,
     addMessage,
     updateLastBotMessage,
+    clearChatHistory,
     chatContainerRef,
   };
 };

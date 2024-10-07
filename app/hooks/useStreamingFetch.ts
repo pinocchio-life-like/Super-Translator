@@ -1,12 +1,11 @@
-// hooks/useStreamingFetch.ts
-
 import customFetch from "../utils/fetch";
 
 export const useStreamingFetch = () => {
   const streamingFetch = async (
     url: string,
     options: RequestInit,
-    onData: (chunk: string) => void
+    onMessage: (receivedText: string, chunkValue: string) => void,
+    onResponse?: (response: Response) => Promise<ReadableStream<Uint8Array>>
   ) => {
     try {
       const response = await customFetch(url, options);
@@ -15,17 +14,30 @@ export const useStreamingFetch = () => {
         throw new Error("Network response was not ok");
       }
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder("utf-8");
+      let reader: ReadableStreamDefaultReader<Uint8Array>;
 
-      if (reader) {
-        let receivedText = "";
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          receivedText += chunk;
-          onData(receivedText);
+      if (onResponse) {
+        const stream = await onResponse(response);
+        reader = stream.getReader();
+      } else {
+        const stream = response.body!;
+        reader = stream.getReader();
+      }
+
+      const decoder = new TextDecoder("utf-8");
+      let receivedText = "";
+      let done = false;
+
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        if (doneReading) {
+          done = true;
+          break;
+        }
+        if (value) {
+          const chunkValue = decoder.decode(value, { stream: true });
+          receivedText += chunkValue;
+          onMessage(receivedText, chunkValue);
         }
       }
     } catch (error) {

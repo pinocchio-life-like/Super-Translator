@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import axios from "../utils/axios";
 import { useRouter } from "next/router";
+import { setLogoutFunction } from "../utils/authUtils";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -37,7 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const login = async (email: string, password: string) => {
     try {
-      const { data } = await axios.post("/api/users/login", {
+      const { data } = await axios.post("/api/auth/login", {
         email,
         password,
       });
@@ -56,6 +57,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setIsAuthenticated(false);
     router.push("/"); // Redirect to login
   };
+
+  useEffect(() => {
+    setLogoutFunction(logout);
+  }, []);
 
   if (loading) {
     return <p>Loading...</p>; // Show a loading state while checking token

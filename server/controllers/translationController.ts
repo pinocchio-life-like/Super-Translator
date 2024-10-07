@@ -4,6 +4,10 @@ import Instructor from "@instructor-ai/instructor";
 import { logActivity } from "../utils/activityLogger";
 import { ActionType, EntityType, ActionOutcome } from "@prisma/client";
 import { PrismaClient } from "@prisma/client";
+import * as similarity from "string-similarity"; // A string similarity library
+import { buildDynamicZodSchema } from "../utils/buildDynamicZodSchema";
+import { ZodTypeAny } from "zod";
+const LanguageDetect = require("languagedetect");
 
 const prisma = new PrismaClient();
 
@@ -16,6 +20,12 @@ const openai = new OpenAI({
 const instructorClient = Instructor({
   client: openai,
   mode: "TOOLS",
+});
+
+// Wrap the OpenAI client with Instructor-AI
+const instructorClientJson = Instructor({
+  client: openai,
+  mode: "FUNCTIONS",
 });
 
 // Define an interface for the streaming chunks
@@ -37,8 +47,19 @@ export const translation = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const userId = (req.user as any)?.id; // Assuming you have user ID in the request object
+  const userId = (req.user as any)?.id;
   const { source, target, content, prompt, translationJobId } = req.body;
+  const lngDetector = new LanguageDetect();
+
+  let detectedLanguage = lngDetector.detect(content, 1);
+  if (detectedLanguage.length > 0) {
+    const [languageName] = detectedLanguage[0];
+    detectedLanguage = languageName;
+  } else {
+    console.log("No language detected.");
+    // Handle the case when language is not detected
+    detectedLanguage = source || "unknown";
+  }
 
   try {
     // Check if the OpenAI API key is available
@@ -69,14 +90,14 @@ export const translation = async (
     }
 
     // Build the system message
-    let systemMessage = `Translate the following content from ${source} to ${target}: ${content}.`;
-    if (source.toLowerCase() === "detect language") {
-      systemMessage = `Detect the source language and translate the following content to ${target}: ${content}.`;
-    }
+    let systemMessage =
+      "First transform Whatever expressions or phrases that you see in to literal terms, ";
 
     if (prompt) {
-      systemMessage += ` Consider the following prompt or context: ${prompt}`;
+      systemMessage += `Consider the following prompt or context: "${prompt}"; `;
     }
+
+    systemMessage += `Detect the source language and translate the following content to "${target}": "${content}";`;
 
     // Add the new user prompt to the message array
     messages.push({ role: "user", content: systemMessage });
@@ -84,8 +105,8 @@ export const translation = async (
     // Generate AI response using Instructor-AI with streaming
     const responseStream = await instructorClient.chat.completions.create({
       model: "gpt-3.5-turbo",
-      messages: messages as any, // Cast to any to bypass type checking
-      temperature: 0.2,
+      messages: messages as any,
+      temperature: 0,
       stream: true,
       seed: 1, // sample seed for reproducibility
     });
@@ -96,18 +117,70 @@ export const translation = async (
     res.setHeader("Connection", "keep-alive");
 
     let translatedContent = "";
-    let aggregatedContent = "";
 
     // Stream the response data to the client
     for await (const chunk of responseStream as AsyncIterable<ChatCompletionChunk>) {
       const content = chunk.choices?.[0]?.delta?.content || "";
       translatedContent += content;
-      aggregatedContent += content;
       res.write(content);
     }
 
-    // End the response when the stream is finished
+    res.write(`.\n
+      .\n
+       Below is the back-translation for error checking
+      .\n`);
+
+    // Perform back-translation for error checking
+    const backTranslationMessages = [
+      {
+        role: "user",
+        content: `Translate the following content back to the language of this text "${content.substring(
+          0,
+          140
+        )}": "${translatedContent}";`,
+      },
+    ];
+
+    const backTranslationResponseStream =
+      await instructorClient.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: backTranslationMessages as any,
+        temperature: 0,
+        stream: true,
+        seed: 1, // sample seed for reproducibility
+      });
+
+    let backTranslatedContent = "";
+
+    // Stream the back-translation response data to the client
+    for await (const chunk of backTranslationResponseStream as AsyncIterable<ChatCompletionChunk>) {
+      const content = chunk.choices?.[0]?.delta?.content || "";
+      backTranslatedContent += content;
+      res.write(content);
+    }
+
+    // Compare the original content with the back-translated content
+    const similarityScore = similarity.compareTwoStrings(
+      content,
+      backTranslatedContent
+    );
+
+    // Define a threshold for acceptable similarity (e.g., 0.8 or 80%)
+    const similarityThreshold = 0.8;
+
+    // Write the similarity score to the response
+    res.write(`.\n
+      .\n
+      .\nSimilarity Score: ${similarityScore}\n`);
+
+    // End the response when both streams are finished
     res.end();
+
+    if (similarityScore < similarityThreshold) {
+      // Handle the case where the translation may have errors
+      console.warn("Translation error detected due to low similarity score.");
+      // You can log this information or handle it according to your needs
+    }
 
     let translationJob;
 
@@ -116,7 +189,7 @@ export const translation = async (
       translationJob = await prisma.translationJob.update({
         where: { id: translationJobId },
         data: {
-          outputFile: translatedContent, // Update the translated content in outputFile
+          outputFile: translatedContent,
           status: "COMPLETED",
         },
       });
@@ -126,7 +199,7 @@ export const translation = async (
         where: { id: conversationHistory?.id },
         data: {
           messages: {
-            push: { role: "bot", content: aggregatedContent },
+            push: { role: "bot", content: translatedContent },
           },
         },
       });
@@ -135,11 +208,12 @@ export const translation = async (
       translationJob = await prisma.translationJob.create({
         data: {
           userId,
-          sourceFile: content, // Save the original content in sourceFile
-          outputFile: translatedContent, // Save the translated content in outputFile
+          sourceFile: content,
+          outputFile: translatedContent,
           sourceLang: source,
           targetLangs: [target],
           status: "COMPLETED",
+          title: translatedContent.substring(0, 50),
         },
       });
 
@@ -148,8 +222,8 @@ export const translation = async (
         data: {
           userId,
           messages: [
-            { role: "user", content: systemMessage },
-            { role: "bot", content: aggregatedContent },
+            { role: "user", content },
+            { role: "bot", content: translatedContent },
           ],
           translationJobId: translationJob.id,
         },
@@ -178,5 +252,248 @@ export const translation = async (
       undefined,
       ActionOutcome.FAILED
     );
+  }
+};
+
+export const translationJson = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const userId = (req.user as any)?.id;
+  const { source, target, content, prompt, translationJobId } = req.body;
+
+  try {
+    // Check if the OpenAI API key is available
+    if (!process.env.OPENAI_API_KEY) {
+      res
+        .status(500)
+        .json({ error: "OpenAI API Key is not set in the environment." });
+      return;
+    }
+
+    let messages: { role: string; content: string }[] = [];
+
+    let conversationHistory;
+
+    if (translationJobId) {
+      // Fetch existing conversation history
+      conversationHistory = await prisma.conversationHistory.findFirst({
+        where: { translationJobId },
+      });
+
+      if (conversationHistory && Array.isArray(conversationHistory.messages)) {
+        // Add existing messages to the AI input
+        messages = conversationHistory.messages as {
+          role: string;
+          content: string;
+        }[];
+      }
+    }
+
+    // Build dynamic Zod schema based on content
+    const contentObject =
+      typeof content === "string" ? JSON.parse(content) : content;
+    const dynamicSchema: ZodTypeAny = buildDynamicZodSchema(contentObject);
+
+    // Build the system message
+    let systemMessage =
+      "You are to translate the values of the provided JSON object into the target language, keeping the keys unchanged. Respond only with the translated JSON object.";
+
+    if (prompt) {
+      systemMessage += ` Consider the following context: "${prompt}".`;
+    }
+
+    // Build the messages array
+    messages.push(
+      { role: "system", content: systemMessage },
+      {
+        role: "user",
+        content: `Content to translate: ${JSON.stringify(contentObject)}`,
+      },
+      { role: "user", content: `Target language: "${target}"` }
+    );
+
+    // Set response headers for streaming
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+
+    // Generate AI response using Instructor-AI with streaming
+    const responseStream = await instructorClientJson.chat.completions.create({
+      messages: messages as any,
+      model: "gpt-3.5-turbo",
+      temperature: 0,
+      stream: true,
+      response_model: { schema: dynamicSchema, name: "json" } as any,
+      // max_retries: 2,
+    });
+
+    let translatedContent = "";
+
+    // Stream the response data to the client
+    for await (const chunk of responseStream as AsyncIterable<any>) {
+      // console.log("Chunk:", chunk);
+
+      // Serialize the chunk to a string
+      const chunkString = JSON.stringify(chunk);
+
+      // Accumulate the translated content
+      translatedContent = chunkString;
+
+      // Format the chunk for SSE
+      const sseFormattedChunk = `data: ${chunkString}\n\n`;
+
+      // Write the formatted chunk to the response
+      res.write(sseFormattedChunk);
+    }
+
+    // End the response when the stream is finished
+    res.end();
+
+    // Validate the translated content
+    // let parsedTranslatedContent;
+    // try {
+    //   parsedTranslatedContent = dynamicSchema.parse(
+    //     JSON.parse(translatedContent)
+    //   );
+    // } catch (validationError) {
+    //   console.error(
+    //     "Translated JSON does not match the expected schema:",
+    //     validationError
+    //   );
+    //   // Optionally, handle schema validation errors
+    // }
+
+    let translationJob;
+
+    if (translationJobId) {
+      // Update the existing translation job
+      translationJob = await prisma.translationJob.update({
+        where: { id: translationJobId },
+        data: {
+          outputFile: translatedContent,
+          status: "COMPLETED",
+        },
+      });
+
+      // Update the conversation history for the existing translation job
+      await prisma.conversationHistory.update({
+        where: { id: conversationHistory?.id },
+        data: {
+          messages: {
+            push: { role: "bot", content: translatedContent },
+          },
+        },
+      });
+    } else {
+      // Save the translation job to the database
+      translationJob = await prisma.translationJob.create({
+        data: {
+          userId,
+          sourceFile: content,
+          outputFile: translatedContent,
+          sourceLang: source,
+          targetLangs: [target],
+          status: "COMPLETED",
+          title: `Translation to ${target}`,
+        },
+      });
+
+      // Save the conversation history to the database
+      await prisma.conversationHistory.create({
+        data: {
+          userId,
+          messages: [
+            // { role: "system", content: systemMessage },
+            {
+              role: "user",
+              content: content,
+            },
+            // { role: "user", content: `Target language: "${target}"` },
+            { role: "bot", content: translatedContent },
+          ],
+          translationJobId: translationJob.id,
+        },
+      });
+    }
+
+    // Log successful translation activity
+    await logActivity(
+      req,
+      userId,
+      ActionType.TRANSLATE,
+      EntityType.TRANSLATION_JOB,
+      translationJob.id,
+      ActionOutcome.SUCCESS
+    );
+  } catch (error) {
+    console.error("Error in translationJson service:", error);
+    res
+      .status(500)
+      .json({ error: "An error occurred during JSON translation." });
+
+    // Log failed translation activity
+    await logActivity(
+      req,
+      userId,
+      ActionType.TRANSLATE,
+      EntityType.TRANSLATION_JOB,
+      translationJobId,
+      ActionOutcome.FAILED
+    );
+  }
+};
+
+export const getTranslationJobs = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const userId = (req.user as any)?.id;
+
+  try {
+    const translationJobs = await prisma.translationJob.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, title: true }, // Select only the id field
+    });
+
+    res.json({ translationJobs });
+  } catch (error) {
+    console.error("Error fetching translation jobs:", error);
+    res
+      .status(500)
+      .json({ error: "An error occurred while fetching translation jobs." });
+  }
+};
+
+export const getTranslationHistory = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  let translationJobId: string | undefined;
+
+  if (typeof req.params.id === "string") {
+    translationJobId = req.params.id;
+  } else if (typeof req.query.id === "string") {
+    translationJobId = req.query.id;
+  }
+
+  if (!translationJobId) {
+    res.status(400).json({ error: "Translation job ID is required." });
+    return;
+  }
+
+  try {
+    const translationHistory = await prisma.conversationHistory.findMany({
+      where: { translationJobId },
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.json({ translationHistory });
+  } catch (error) {
+    console.error("Error fetching translation history:", error);
+    res
+      .status(500)
+      .json({ error: "An error occurred while fetching translation history." });
   }
 };

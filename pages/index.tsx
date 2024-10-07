@@ -8,15 +8,19 @@ import Layout from "../app/layout";
 const HomeContent: React.FC = () => {
   const { isAuthenticated } = useAuth();
 
+  if (!isAuthenticated) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <GuestPage />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-screen">
-      {!isAuthenticated ? (
-        <GuestPage />
-      ) : (
-        <Layout>
-          <SuperTranslator />
-        </Layout>
-      )}
+      <Layout>
+        <SuperTranslator />
+      </Layout>
     </div>
   );
 };

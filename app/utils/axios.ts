@@ -1,4 +1,5 @@
 import axios from "axios";
+import { logout } from "./authUtils";
 
 const axiosInstance = axios.create({
   baseURL: "http://localhost:5000", // API base URL
@@ -7,6 +8,8 @@ const axiosInstance = axios.create({
 
 // Function to request a new access token using the refresh token
 const refreshAccessToken = async () => {
+  console.log("Refresh Access Token");
+
   try {
     const response = await axios.post(
       "http://localhost:5000/api/refresh/accessToken",
@@ -63,7 +66,8 @@ axiosInstance.interceptors.response.use(
         return axiosInstance(originalRequest);
       } catch (refreshError) {
         console.error("Session expired. Please log in again.");
-        // Optionally trigger logout
+        // trigger logout
+        logout();
       }
     }
     console.error("Response Interceptor Error:", error); // Debugging: Log response interceptor error

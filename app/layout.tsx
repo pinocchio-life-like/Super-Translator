@@ -1,14 +1,17 @@
 "use client";
 
 import React from "react";
+import { useTranslationJobs } from "./context/TranslationContext";
+import Link from "next/link";
 import { useAuth } from "./context/AuthContext";
 
-const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { logout } = useAuth();
+interface LayoutProps {
+  children: React.ReactNode;
+}
 
-  const handleLogout = () => {
-    logout();
-  };
+const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const { logout } = useAuth();
+  const { data } = useTranslationJobs();
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -17,7 +20,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <h1 className="text-xl font-semibold">Super Translator</h1>
         <div className="relative">
           <button
-            onClick={handleLogout}
+            onClick={logout}
             className="focus:outline-none hover:bg-gray-200 p-2"
           >
             logout
@@ -31,21 +34,18 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <aside className="w-64 bg-[#F9F9F9] fixed top-16 bottom-0 left-0 z-10 overflow-auto">
           <nav className="mt-4">
             <ul>
-              <li className="px-6 py-2 hover:bg-gray-200">
-                <a href="#" className="flex items-center">
-                  <span className="ml-2">Chat 1</span>
-                </a>
-              </li>
-              <li className="px-6 py-2 hover:bg-gray-200">
-                <a href="#" className="flex items-center">
-                  <span className="ml-2">Chat 2</span>
-                </a>
-              </li>
-              <li className="px-6 py-2 hover:bg-gray-200">
-                <a href="#" className="flex items-center">
-                  <span className="ml-2">Chat 3</span>
-                </a>
-              </li>
+              {data.translationJobs.map((job: any) => (
+                <li key={job.id} className="px-6 py-2 hover:bg-gray-200">
+                  <Link
+                    href={`/translations/${job.id}`}
+                    className="flex items-center"
+                  >
+                    <span className="ml-2">
+                      {job.title.substring(0, 20)}...
+                    </span>
+                  </Link>
+                </li>
+              ))}
             </ul>
           </nav>
         </aside>

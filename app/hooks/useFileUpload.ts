@@ -3,6 +3,7 @@ import { useState, useRef } from "react";
 export const useFileUpload = () => {
   const [fileContent, setFileContent] = useState<string>("");
   const [fileName, setFileName] = useState<string | null>(null);
+  const [fileExtension, setFileExtension] = useState<string | null>(null);
   const [isTextareaEnabled, setIsTextareaEnabled] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -20,6 +21,7 @@ export const useFileUpload = () => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
+      console.log(text);
       setFileContent(text);
     };
     reader.readAsText(file);
@@ -28,11 +30,14 @@ export const useFileUpload = () => {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      const extension = file.name.split(".").pop() || null;
       setFileName(truncateFileName(file.name));
+      setFileExtension(extension);
       readFileContent(file);
       setIsTextareaEnabled(true);
     } else {
       setFileName(null);
+      setFileExtension(null);
       setFileContent("");
       setIsTextareaEnabled(false);
     }
@@ -47,6 +52,7 @@ export const useFileUpload = () => {
   return {
     fileContent,
     fileName,
+    fileExtension,
     isTextareaEnabled,
     handleFileChange,
     fileInputRef,

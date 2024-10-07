@@ -3,6 +3,7 @@ import cors from "cors";
 import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
+import authRoutes from "./routes/authRoutes";
 import userRoutes from "./routes/userRoutes";
 import translationRoutes from "./routes/translationRoutes";
 import prisma from "./config/prisma";
@@ -35,14 +36,17 @@ app.get("/health", (req, res) => {
 });
 
 // Refresh token endpoint
-app.post("/api/refresh", refreshRoutes);
+app.post("/api/refresh", authenticateToken, refreshRoutes);
 
 app.get("/", (req, res) => {
   res.status(200).json({ message: "Welcome to the Super Translator API" });
 });
 
+// Auth routes
+app.use("/api/auth", authRoutes);
+
 // User routes
-app.use("/api/users", userRoutes);
+app.use("/api/users", authenticateToken, userRoutes);
 
 // Translation routes
 app.use("/api/translate", authenticateToken, translationRoutes);

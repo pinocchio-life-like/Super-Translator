@@ -4,7 +4,7 @@ import { Response } from "express";
 
 export const generateAccessToken = (userId: string) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET || "default_secret", {
-    expiresIn: "10s",
+    expiresIn: "1h",
   });
 };
 

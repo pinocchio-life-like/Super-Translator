@@ -1,91 +1,38 @@
 import { Request, Response } from "express";
-import bcrypt from "bcryptjs";
 import prisma from "../config/prisma";
-import { logActivity } from "../utils/activityLogger";
-import { ActionType, EntityType } from "../types/enums";
-import {
-  generateAccessToken,
-  generateRefreshToken,
-  clearRefreshTokens,
-  saveRefreshToken,
-  setRefreshTokenCookie,
-} from "../services/generateTokens";
+import jwt from "jsonwebtoken";
 
-// Signup controller
-export const signup = async (req: Request, res: Response): Promise<void> => {
-  const { email, password, name } = req.body;
+// GetMe controller
+export const getMe = async (req: Request, res: Response): Promise<void> => {
+  const authHeader = req.headers.authorization;
 
-  try {
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-    if (existingUser) {
-      res.status(400).json({ message: "User already exists" });
-      return;
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        name,
-      },
-    });
-
-    const accessToken = generateAccessToken(newUser.id);
-    const refreshToken = generateRefreshToken(newUser.id);
-
-    await saveRefreshToken(newUser.id, refreshToken);
-
-    // Set refresh token in an HTTP-only cookie
-    setRefreshTokenCookie(res, refreshToken);
-
-    // Log successful signup activity
-    await logActivity(
-      req,
-      newUser.id,
-      ActionType.CREATE,
-      EntityType.USER,
-      newUser.id
-    );
-
-    res.status(201).json({ message: "User created", accessToken });
-  } catch (error) {
-    console.error("Error creating user", error);
-    res.status(500).json({ error: "Internal server error" });
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
   }
-};
 
-// Login controller
-export const login = async (req: Request, res: Response): Promise<void> => {
-  const { email, password } = req.body;
+  const token = authHeader.split(" ")[1];
+  const jwtSecret = process.env.JWT_SECRET;
+
+  if (!jwtSecret) {
+    console.error("JWT_SECRET is not defined");
+    res.status(500).json({ error: "Internal server error" });
+    return;
+  }
 
   try {
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user || !user.password) {
-      res.status(400).json({ message: "Invalid email or password" });
+    const decoded: any = jwt.verify(token, jwtSecret);
+    const userId = decoded.id;
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
       return;
     }
 
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
-      res.status(400).json({ message: "Invalid email or password" });
-      return;
-    }
-
-    const accessToken = generateAccessToken(user.id);
-    const refreshToken = generateRefreshToken(user.id);
-
-    await saveRefreshToken(user.id, refreshToken);
-
-    // Set refresh token in an HTTP-only cookie
-    setRefreshTokenCookie(res, refreshToken);
-
-    // Log successful login activity
-    await logActivity(req, user.id, ActionType.LOGIN, EntityType.USER, user.id);
-
-    res.status(200).json({ message: "Login successful", accessToken });
+    res.status(200).json({ id: user.id, email: user.email, name: user.name });
   } catch (error) {
-    console.error("Error logging in", error);
+    console.error("Error fetching user", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };

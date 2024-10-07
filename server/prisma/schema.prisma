@@ -31,6 +31,7 @@ model User {
 // === Translation Job Model ===
 model TranslationJob {
   id           String    @id @default(uuid())    // Use UUID instead of autoincrement
+  title        String
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId       String
   sourceFile   String    // URL or path to the uploaded file
