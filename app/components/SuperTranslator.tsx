@@ -9,6 +9,17 @@ interface SuperTranslatorProps {
   id?: string;
 }
 
+interface FormDataObj {
+  content: string;
+  prompt: string;
+  translationJobId?: string;
+}
+
+interface Message {
+  role: "user" | "bot" | "system";
+  content: string;
+}
+
 const SuperTranslator: React.FC<SuperTranslatorProps> = ({ id }) => {
   const { chatHistory, addMessage, clearChatHistory, updateLastBotMessage } =
     useChatHistory();
@@ -16,7 +27,7 @@ const SuperTranslator: React.FC<SuperTranslatorProps> = ({ id }) => {
   const [formHeight, setFormHeight] = useState<number>(0);
   const [fileExtension, setFileExtension] = useState<string>("");
 
-  const handleFormSubmit = async (formDataObj: any) => {
+  const handleFormSubmit = async (formDataObj: FormDataObj) => {
     // Include translationJobId if it exists
     if (id) {
       formDataObj.translationJobId = id;
@@ -86,7 +97,7 @@ const SuperTranslator: React.FC<SuperTranslatorProps> = ({ id }) => {
         const data = response.data.translationHistory[0];
         // Update chat history with fetched data
         // Map roles appropriately
-        data.messages.forEach((message: any) => {
+        data.messages.forEach((message: Message) => {
           if (message.role === "system") return; // Skip system messages
           addMessage({
             role: message.role === "bot" ? "bot" : "user",

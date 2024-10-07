@@ -4,8 +4,15 @@ import { FaCircleArrowUp } from "react-icons/fa6";
 import { useFileUpload } from "../hooks/useFileUpload";
 import { usePrompt } from "../hooks/usePrompt";
 
+interface FormDataObj {
+  content: string;
+  prompt: string;
+  source: string;
+  target: string;
+}
+
 interface FileUploadAndPromptFormProps {
-  onSubmit: (formDataObj: any) => void;
+  onSubmit: (formDataObj: FormDataObj) => void;
   setFormHeight: (height: number) => void;
   setFileExtension: (fileExtension: string) => void;
 }

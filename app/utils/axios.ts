@@ -65,7 +65,7 @@ axiosInstance.interceptors.response.use(
         originalRequest.headers["Authorization"] = `Bearer ${newAccessToken}`;
         return axiosInstance(originalRequest);
       } catch (refreshError) {
-        console.error("Session expired. Please log in again.");
+        console.error("Session expired. Please log in again.", refreshError);
         // trigger logout
         logout();
       }
