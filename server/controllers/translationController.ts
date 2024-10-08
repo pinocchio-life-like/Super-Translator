@@ -221,6 +221,15 @@ export const translation = async (
 
     let translationJob;
 
+    // Ensure userId exists in the User table
+    const userExists = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!userExists) {
+      throw new Error("User not found");
+    }
+
     if (translationJobId) {
       // Update the existing translation job
       translationJob = await prisma.translationJob.update({
@@ -278,7 +287,11 @@ export const translation = async (
     );
   } catch (error) {
     console.error("Error in translation service:", error);
-    res.status(500).json({ error: "An error occurred during translation." });
+
+    // Avoid sending multiple responses
+    if (!res.headersSent) {
+      res.status(500).json({ error: "An error occurred during translation." });
+    }
 
     // Log failed translation activity
     await logActivity(
