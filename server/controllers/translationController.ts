@@ -89,24 +89,61 @@ export const translation = async (
       }
     }
 
-    // Build the system message
+    // First API Call: Transform idioms and phrases into literal terms
+
+    // Build the system message for the first API call
+    let systemMessage1 =
+      "Your task is to rewrite the following content by transforming any idioms and expressions into their meanings and not keep the phrases in.";
+
+    // if (prompt) {
+    //   systemMessage1 += ` Consider the following prompt or context: "${prompt}";`;
+    // }
+
+    systemMessage1 += ` Here is the Content: "${content}";`;
+    systemMessage1 += ` Note highly that the output should replace idioms and expressions by their meanings for clarity.`;
+
+    // Create the message array for the first API call
+    let messages1 = [{ role: "user", content: systemMessage1 } as any];
+
+    // Generate AI response for the first API call
+    const response1 = await instructorClient.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: messages1,
+      temperature: 0,
+      max_tokens: 1000,
+      seed: 1, // sample seed for reproducibility
+    });
+
+    // Extract the transformed content from the first response
+    let transformedContent =
+      response1.choices?.[0]?.message?.content?.trim() ?? "";
+
+    if (!transformedContent) {
+      console.error("No valid response received from the AI model.");
+      // Handle the error case as needed
+    }
+    // Second API Call: Translate the transformed content into the target language
+
+    // Build the system message for the second API call
     let systemMessage =
-      "First transform Whatever expressions or phrases that you see in to literal terms, ";
+      "Your task is to detect the source language of the given content and translate it into the target language.";
 
     if (prompt) {
-      systemMessage += `Consider the following prompt or context: "${prompt}"; `;
+      systemMessage += ` Consider the following prompt or context: "${prompt}";`;
     }
 
-    systemMessage += `Detect the source language and translate the following content to "${target}": "${content}";`;
+    systemMessage += ` Detect the source language and translate the following content into "${target}": "${transformedContent}";`;
+    systemMessage += ` The final output should be natural and appropriate in the target language.`;
 
-    // Add the new user prompt to the message array
-    messages.push({ role: "user", content: systemMessage });
+    // Create the message array for the second API call
+    let messages2 = [{ role: "user", content: systemMessage } as any];
 
-    // Generate AI response using Instructor-AI with streaming
+    // Generate AI response for the second API call
     const responseStream = await instructorClient.chat.completions.create({
       model: "gpt-3.5-turbo",
-      messages: messages as any,
+      messages: messages2,
       temperature: 0,
+      max_tokens: 1000,
       stream: true,
       seed: 1, // sample seed for reproducibility
     });
