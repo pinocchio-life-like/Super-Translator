@@ -1,6 +1,6 @@
 import React from "react";
 import { useAuth } from "../app/context/AuthContext";
-import GuestPage from "../app/components/GuestPage";
+// import GuestPage from "../app/components/GuestPage";
 import SuperTranslator from "../app/components/SuperTranslator";
 import "../app/globals.css";
 import Layout from "../app/layout";
