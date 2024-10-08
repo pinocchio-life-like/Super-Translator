@@ -83,7 +83,14 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     // Log successful login activity
     await logActivity(req, user.id, ActionType.LOGIN, EntityType.USER, user.id);
 
-    res.status(200).json({ message: "Login successful", accessToken });
+    // Exclude the password field from the user object
+    const { password: _, ...userWithoutPassword } = user;
+
+    res.status(200).json({
+      message: "Login successful",
+      accessToken,
+      user: userWithoutPassword, // Include user data in the response
+    });
   } catch (error) {
     console.error("Error logging in", error);
     res.status(500).json({ error: "Internal server error" });

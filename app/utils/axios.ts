@@ -6,6 +6,7 @@ const axiosInstance = axios.create({
   // baseURL: "http://localhost:5000", // API base URL
   baseURL: "https://super-translator.onrender.com", // API base URL
 
+  // baseURL: "http://localhost:5000", // API base URL
   withCredentials: true, // Ensure cookies (including refreshToken) are sent with requests
 });
 
@@ -14,14 +15,15 @@ const refreshAccessToken = async () => {
   console.log("Refreshing Access Token...");
 
   try {
-    const response = await axios.post(
-      // "http://localhost:5000/api/refresh/accessToken",
-      "https://super-translator.onrender.com/api/refresh/accessToken",
-      {},
-      { withCredentials: true }
-    );
+    const response = await axiosInstance.post("/api/refresh/accessToken", {});
     const newAccessToken = response.data.accessToken;
     localStorage.setItem("accessToken", newAccessToken);
+
+    // Set the Authorization header for future requests
+    axiosInstance.defaults.headers.common[
+      "Authorization"
+    ] = `Bearer ${newAccessToken}`;
+
     return newAccessToken;
   } catch (error) {
     console.error("Failed to refresh access token:", error);
@@ -59,15 +61,20 @@ axiosInstance.interceptors.response.use(
       originalRequest._retry = true;
       try {
         const newAccessToken = await refreshAccessToken();
-        axios.defaults.headers.common[
+
+        // Set the Authorization header for future requests
+        axiosInstance.defaults.headers.common[
           "Authorization"
         ] = `Bearer ${newAccessToken}`;
+
         originalRequest.headers["Authorization"] = `Bearer ${newAccessToken}`;
+
         return axiosInstance(originalRequest);
       } catch (refreshError) {
         console.error("Session expired. Please log in again.", refreshError);
         // Trigger logout
         logout();
+        return Promise.reject(refreshError);
       }
     }
     console.error("Response Interceptor Error:", error);

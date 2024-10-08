@@ -1,8 +1,7 @@
-// app/context/AuthContext.tsx
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import axios from "../utils/axios";
+import axiosInstance from "../utils/axios"; // Import your custom axios instance
 import { useRouter } from "next/router";
 import { setLogoutFunction } from "../utils/authUtils";
 
@@ -31,33 +30,58 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [user, setUser] = useState<User | null | undefined>(undefined);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const router = useRouter();
 
   const fetchUser = async () => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      setUser(null);
+      setLoading(false);
+      setIsAuthenticated(false);
+      return;
+    }
+
     try {
-      const response = await axios.get("/api/users/me");
+      const response = await axiosInstance.get("/api/users/me");
       setUser(response.data);
+      setIsAuthenticated(true);
     } catch (error) {
       console.error("Error fetching user data:", error);
       setUser(null);
+      setIsAuthenticated(false);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
-      const { data } = await axios.post("/api/auth/login", {
+      const { data } = await axiosInstance.post("/api/auth/login", {
         email,
         password,
       });
       if (data.accessToken) {
         localStorage.setItem("accessToken", data.accessToken);
-        await fetchUser(); // Fetch user data after login
-        router.push("/");
+
+        // Set the Authorization header for future requests
+        axiosInstance.defaults.headers.common[
+          "Authorization"
+        ] = `Bearer ${data.accessToken}`;
+
+        // Set user directly from response
+        setUser(data.user);
+        setIsAuthenticated(true);
+
+        // Refresh the page after login
+        window.location.reload();
       }
     } catch (error) {
       console.error("Login failed", error);
@@ -66,23 +90,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const logout = () => {
     localStorage.removeItem("accessToken");
+    delete axiosInstance.defaults.headers.common["Authorization"];
     setUser(null);
+    setIsAuthenticated(false);
     router.push("/");
   };
 
   useEffect(() => {
     setLogoutFunction(logout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (user === undefined) {
+  if (loading) {
     // While user data is being fetched
     return <p>Loading...</p>;
   }
 
   return (
-    <AuthContext.Provider
-      value={{ isAuthenticated: !!user, user, login, logout }}
-    >
+    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
