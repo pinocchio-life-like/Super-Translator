@@ -1,17 +1,21 @@
+// app/utils/axios.ts
 import axios from "axios";
 import { logout } from "./authUtils";
 
 const axiosInstance = axios.create({
+  // baseURL: "http://localhost:5000", // API base URL
   baseURL: "https://super-translator.onrender.com", // API base URL
+
   withCredentials: true, // Ensure cookies (including refreshToken) are sent with requests
 });
 
 // Function to request a new access token using the refresh token
 const refreshAccessToken = async () => {
-  console.log("Refresh Access Token");
+  console.log("Refreshing Access Token...");
 
   try {
     const response = await axios.post(
+      // "http://localhost:5000/api/refresh/accessToken",
       "https://super-translator.onrender.com/api/refresh/accessToken",
       {},
       { withCredentials: true }
@@ -35,7 +39,7 @@ axiosInstance.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error("Request Interceptor Error:", error); // Debugging: Log request interceptor error
+    console.error("Request Interceptor Error:", error);
     return Promise.reject(error);
   }
 );
@@ -43,10 +47,6 @@ axiosInstance.interceptors.request.use(
 // Response interceptor: Handle 403 errors and store refreshed token if present
 axiosInstance.interceptors.response.use(
   (response) => {
-    const newAccessToken = response.headers["authorization"]?.split(" ")[1];
-    if (newAccessToken) {
-      localStorage.setItem("accessToken", newAccessToken);
-    }
     return response;
   },
   async (error) => {
@@ -66,12 +66,12 @@ axiosInstance.interceptors.response.use(
         return axiosInstance(originalRequest);
       } catch (refreshError) {
         console.error("Session expired. Please log in again.", refreshError);
-        // trigger logout
+        // Trigger logout
         logout();
       }
     }
-    console.error("Response Interceptor Error:", error); // Debugging: Log response interceptor error
-    return Promise.reject(error); // For other errors, just reject the promise
+    console.error("Response Interceptor Error:", error);
+    return Promise.reject(error);
   }
 );
 

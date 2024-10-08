@@ -1,7 +1,9 @@
+// app/context/TranslationContext.tsx
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import axios from "../utils/axios";
+import { useAuth } from "./AuthContext"; // Import useAuth
 
 interface TranslationJob {
   id: string;
@@ -22,7 +24,7 @@ export const useTranslationJobs = () => {
   const context = useContext(TranslationContext);
   if (!context) {
     throw new Error(
-      "useTranslation must be used within an TranslationProvider"
+      "useTranslationJobs must be used within a TranslationProvider"
     );
   }
   return context;
@@ -30,42 +32,40 @@ export const useTranslationJobs = () => {
 
 interface TranslationProviderProps {
   children: React.ReactNode;
-  id: string; // Add id as a prop
 }
 
 export const TranslationProvider: React.FC<TranslationProviderProps> = ({
   children,
-  id,
 }) => {
+  const { user } = useAuth();
   const [translationJobs, setTranslationJobs] = useState<{
     translationJobs: TranslationJob[];
   }>({
     translationJobs: [],
   });
-  const [loading, setLoading] = useState<boolean>(true); // New state for loading
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const fetchTranslationJobs = async () => {
       try {
-        const token = localStorage.getItem("accessToken");
-        if (token) {
+        if (user) {
           const response = await axios.get(
-            `http://localhost:5000/api/translate/translationJobs?id=${id}`
+            `/api/translate/translationJobs?id=${user.id}`
           );
           setTranslationJobs(response.data);
         }
       } catch (error) {
         console.error("Error fetching translation jobs:", error);
       } finally {
-        setLoading(false); // Set loading to false after fetching data
+        setLoading(false);
       }
     };
 
     fetchTranslationJobs();
-  }, [id]); // Add id as a dependency
+  }, [user]);
 
   if (loading) {
-    return <p>Loading...</p>; // Show a loading state while fetching data
+    return <p>Loading...</p>;
   }
 
   return (

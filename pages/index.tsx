@@ -1,5 +1,6 @@
+// pages/index.tsx
 import React from "react";
-import { useAuth, AuthProvider } from "../app/context/AuthContext";
+import { useAuth } from "../app/context/AuthContext";
 import GuestPage from "../app/components/GuestPage";
 import SuperTranslator from "../app/components/SuperTranslator";
 import "../app/globals.css";
@@ -26,11 +27,7 @@ const HomeContent: React.FC = () => {
 };
 
 const Home: React.FC = () => {
-  return (
-    <AuthProvider>
-      <HomeContent />
-    </AuthProvider>
-  );
+  return <HomeContent />;
 };
 
 export default Home;

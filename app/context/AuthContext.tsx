@@ -1,3 +1,4 @@
+// app/context/AuthContext.tsx
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
@@ -5,8 +6,14 @@ import axios from "../utils/axios";
 import { useRouter } from "next/router";
 import { setLogoutFunction } from "../utils/authUtils";
 
+interface User {
+  id: string;
+  // Include other user properties as needed
+}
+
 interface AuthContextType {
   isAuthenticated: boolean;
+  user: User | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
@@ -24,16 +31,21 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true); // New state for loading
+  const [user, setUser] = useState<User | null | undefined>(undefined);
   const router = useRouter();
 
-  useEffect(() => {
-    const token = localStorage.getItem("accessToken");
-    if (token) {
-      setIsAuthenticated(true);
+  const fetchUser = async () => {
+    try {
+      const response = await axios.get("/api/users/me");
+      setUser(response.data);
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      setUser(null);
     }
-    setLoading(false); // Set loading to false after token check
+  };
+
+  useEffect(() => {
+    fetchUser();
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -44,8 +56,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       });
       if (data.accessToken) {
         localStorage.setItem("accessToken", data.accessToken);
-        setIsAuthenticated(true);
-        router.push("/"); // Push only after setting auth state
+        await fetchUser(); // Fetch user data after login
+        router.push("/");
       }
     } catch (error) {
       console.error("Login failed", error);
@@ -54,20 +66,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const logout = () => {
     localStorage.removeItem("accessToken");
-    setIsAuthenticated(false);
-    router.push("/"); // Redirect to login
+    setUser(null);
+    router.push("/");
   };
 
   useEffect(() => {
     setLogoutFunction(logout);
   }, []);
 
-  if (loading) {
-    return <p>Loading...</p>; // Show a loading state while checking token
+  if (user === undefined) {
+    // While user data is being fetched
+    return <p>Loading...</p>;
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider
+      value={{ isAuthenticated: !!user, user, login, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );
