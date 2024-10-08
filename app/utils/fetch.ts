@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:5000"; // API base URL
+const BASE_URL = "https://super-translator.onrender.com"; // API base URL
 
 // Extend RequestInit to include _retry property
 interface CustomRequestInit extends RequestInit {

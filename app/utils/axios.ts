@@ -2,7 +2,7 @@ import axios from "axios";
 import { logout } from "./authUtils";
 
 const axiosInstance = axios.create({
-  baseURL: "http://localhost:5000", // API base URL
+  baseURL: "https://super-translator.onrender.com", // API base URL
   withCredentials: true, // Ensure cookies (including refreshToken) are sent with requests
 });
 
@@ -12,7 +12,7 @@ const refreshAccessToken = async () => {
 
   try {
     const response = await axios.post(
-      "http://localhost:5000/api/refresh/accessToken",
+      "https://super-translator.onrender.com/api/refresh/accessToken",
       {},
       { withCredentials: true }
     );

@@ -3,8 +3,15 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import axios from "../utils/axios";
 
+interface TranslationJob {
+  id: string;
+  title: string;
+}
+
 interface TranslationContextType {
-  data: any;
+  data: {
+    translationJobs: TranslationJob[];
+  };
 }
 
 const TranslationContext = createContext<TranslationContextType | undefined>(
@@ -30,7 +37,11 @@ export const TranslationProvider: React.FC<TranslationProviderProps> = ({
   children,
   id,
 }) => {
-  const [translationJobs, setTranslationJobs] = useState<any>([]);
+  const [translationJobs, setTranslationJobs] = useState<{
+    translationJobs: TranslationJob[];
+  }>({
+    translationJobs: [],
+  });
   const [loading, setLoading] = useState<boolean>(true); // New state for loading
 
   useEffect(() => {
