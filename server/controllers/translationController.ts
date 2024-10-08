@@ -89,8 +89,6 @@ export const translation = async (
       }
     }
 
-    // First API Call: Transform idioms and phrases into literal terms
-
     // Build the system message for the first API call
     let systemMessage1 =
       "Your task is to rewrite the following content by transforming any idioms and expressions into their meanings and not keep the phrases in.";
@@ -221,15 +219,6 @@ export const translation = async (
 
     let translationJob;
 
-    // Ensure userId exists in the User table
-    const userExists = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!userExists) {
-      throw new Error("User not found");
-    }
-
     if (translationJobId) {
       // Update the existing translation job
       translationJob = await prisma.translationJob.update({
@@ -287,11 +276,7 @@ export const translation = async (
     );
   } catch (error) {
     console.error("Error in translation service:", error);
-
-    // Avoid sending multiple responses
-    if (!res.headersSent) {
-      res.status(500).json({ error: "An error occurred during translation." });
-    }
+    res.status(500).json({ error: "An error occurred during translation." });
 
     // Log failed translation activity
     await logActivity(
